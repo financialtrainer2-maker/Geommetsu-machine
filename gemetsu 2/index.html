@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>점메추 - 다양한 메뉴 롤렛</title>
+<style>
+body { font-family: Arial, sans-serif; margin:0; padding:0; min-height:100vh; background: linear-gradient(135deg, #ffecd2, #fcb69f); display:flex; flex-direction: column; align-items:center; }
+.filter-card, .main-card { background:#fff; border-radius:15px; padding:20px; width:90%; max-width:450px; margin:20px 0; box-shadow:0 10px 25px rgba(0,0,0,0.2); }
+.filter-card h3, .main-card h1 { margin-bottom:10px; text-align:center; }
+.filter-card label { display:flex; align-items:center; gap:8px; font-size:16px; cursor:pointer; margin-bottom:5px; }
+.filter-card input[type=radio] { width:20px; height:20px; }
+button { padding:12px; font-size:18px; border-radius:10px; border:none; cursor:pointer; width:100%; margin-top:10px; }
+.recommend-btn { background-color:#ff7f50; color:white; }
+.share-result-btn { background-color:#4CAF50; color:white; }
+.share-web-btn { background-color:#2196F3; color:white; }
+.sns-buttons { display:flex; gap:10px; margin-top:10px; justify-content:center; flex-wrap:wrap; }
+.result { margin-top:20px; font-size:16px; text-align:left; width:100%; max-height:350px; overflow-y:auto; padding-right:5px; }
+.advantages, .disadvantages { margin-top:10px; padding:10px; background:#f9f9f9; border-radius:10px; }
+.advantages strong, .disadvantages strong { color:#ff7f50; }
+.roulette { font-size:22px; font-weight:bold; margin-top:20px; min-height:28px; transition: all 0.2s; text-align:center; }
+.roulette.spin { animation: spinFlash 0.2s; }
+.roulette.final { color:#fff; background:#ff7f50; border-radius:10px; padding:5px; }
+@keyframes spinFlash {
+  0% { color:#000; background:transparent; }
+  50% { color:#ff7f50; background:#fff3e0; transform: scale(1.2); }
+  100% { color:#000; background:transparent; transform: scale(1); }
+}
+.adsense { background-color:#f1f1f1; width:90%; max-width:450px; height:90px; margin:20px 0; display:flex; justify-content:center; align-items:center; color:#888; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.2);}
+</style>
+</head>
+<body>
+
+<div class="adsense">광고 자리 (AdSense 삽입)</div>
+
+<div class="filter-card">
+  <h3>카테고리/맛 필터 (한 번에 하나 선택)</h3>
+  <label><input type="radio" name="filter" value="한식"> 한식</label>
+  <label><input type="radio" name="filter" value="양식"> 양식</label>
+  <label><input type="radio" name="filter" value="중식"> 중식</label>
+  <label><input type="radio" name="filter" value="일식"> 일식</label>
+  <label><input type="radio" name="filter" value="간단"> 간단</label>
+  <label><input type="radio" name="filter" value="건강식"> 건강식</label>
+  <label><input type="radio" name="filter" value="매운맛"> 매운 맛</label>
+  <label><input type="radio" name="filter" value="시원한맛"> 시원한 맛</label>
+  <label><input type="radio" name="filter" value="순한맛"> 순한 맛</label>
+</div>
+
+<div class="main-card">
+  <h1>점메추 🍽</h1>
+  <button class="recommend-btn" onclick="startRoulette()">추천!</button>
+  <div class="roulette" id="roulette">🍽</div>
+  <div class="result" id="result"></div>
+  <button class="share-result-btn" id="shareResultBtn" style="display:none;" onclick="shareResult(true)">결과 공유</button>
+  <button class="share-web-btn" onclick="shareResult(false)">웹 공유</button>
+
+  <div class="sns-buttons" id="snsButtons" style="display:none;">
+    
+  </div>
+</div>
+
+<script>
+// 메뉴 데이터 (20개 이상)
+const menus = [
+  {name:"김치찌개 🍲", health:"면역력 강화", ingredients:["김치","돼지고기","두부"], advantages:"따뜻함, 소화 도움", disadvantages:"칼로리 높음", tags:["한식","매운맛"]},
+  {name:"비빔밥 🥗", health:"영양 균형", ingredients:["밥","나물","계란"], advantages:"비타민 풍부", disadvantages:"조리시간 있음", tags:["한식","건강식","순한맛"]},
+  {name:"피자 🍕", health:"칼슘 공급", ingredients:["도우","치즈","토마토 소스"], advantages:"맛있음", disadvantages:"칼로리 높음", tags:["양식","간단"]},
+  {name:"라면 🍜", health:"빠른 에너지", ingredients:["라면","계란","김치"], advantages:"빠른 조리", disadvantages:"나트륨 높음", tags:["간단","매운맛"]},
+  {name:"샐러드 🥗", health:"비타민 풍부", ingredients:["채소","드레싱"], advantages:"다이어트 도움", disadvantages:"포만감 적음", tags:["건강식","간단","순한맛"]},
+  {name:"떡볶이 🌶", health:"칼로리 공급", ingredients:["떡","고추장"], advantages:"기분 전환", disadvantages:"매운맛 강함", tags:["한식","매운맛","간단"]},
+  {name:"초밥 🍣", health:"단백질 공급", ingredients:["밥","생선"], advantages:"오메가3 풍부", disadvantages:"조리 어려움", tags:["일식","순한맛"]},
+  {name:"파스타 🍝", health:"탄수화물 공급", ingredients:["파스타","소스"], advantages:"간편", disadvantages:"칼로리 높음", tags:["양식","간단"]},
+  {name:"스테이크 🥩", health:"단백질, 철분", ingredients:["소고기","소금"], advantages:"영양 풍부", disadvantages:"조리 난이도 있음", tags:["양식","건강식"]},
+  {name:"샌드위치 🥪", health:"간단한 식사", ingredients:["빵","햄","치즈"], advantages:"빠른 조리", disadvantages:"영양 불균형", tags:["양식","간단"]},
+  {name:"우동 🍜", health:"소화 도움", ingredients:["면","국물"], advantages:"따뜻함", disadvantages:"칼로리 있음", tags:["일식","순한맛"]},
+  {name:"짜장면 🍜", health:"탄수화물 공급", ingredients:["면","짜장 소스"], advantages:"맛있음", disadvantages:"칼로리 높음", tags:["중식","순한맛"]},
+  {name:"탕수육 🥩", health:"단백질 공급", ingredients:["돼지고기","소스"], advantages:"맛있음", disadvantages:"칼로리 높음", tags:["중식","간단"]},
+  {name:"김밥 🍙", health:"간편 식사", ingredients:["밥","재료"], advantages:"휴대 간편", disadvantages:"칼로리 있음", tags:["한식","간단"]},
+  {name:"오므라이스 🍳", health:"단백질 공급", ingredients:["밥","계란"], advantages:"맛있음", disadvantages:"조리 시간", tags:["양식","순한맛"]},
+  {name:"카레 🍛", health:"탄수화물 공급", ingredients:["밥","카레 소스"], advantages:"간편", disadvantages:"칼로리 있음", tags:["양식","순한맛"]},
+  {name:"냉면 🥢", health:"시원함", ingredients:["면","육수"], advantages:"여름에 좋음", disadvantages:"포만감 적음", tags:["한식","시원한맛"]},
+  {name:"갈비탕 🍲", health:"단백질 공급", ingredients:["갈비","육수"], advantages:"영양 풍부", disadvantages:"조리 시간", tags:["한식","순한맛"]},
+  {name:"부대찌개 🍲", health:"칼로리 공급", ingredients:["햄","소시지","김치"], advantages:"포만감", disadvantages:"나트륨 높음", tags:["한식","매운맛"]},
+  {name:"떡국 🍲", health:"탄수화물 공급", ingredients:["떡","육수"], advantages:"새해에 좋음", disadvantages:"조리 시간", tags:["한식","순한맛"]}
+];
+
+let finalMenu = null;
+function startRoulette() {
+  const selectedFilter = document.querySelector('.filter-card input[name="filter"]:checked')?.value;
+
+  // 롤렛에 돌아갈 배열: 모든 메뉴 포함 (회전용)
+  const rouletteArray = [];
+  while(rouletteArray.length < 20){ // 충분히 돌아가게
+    rouletteArray.push(...menus);
+  }
+
+  const rouletteDiv = document.getElementById("roulette");
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = "";
+  rouletteDiv.classList.remove('final');
+  document.getElementById("shareResultBtn").style.display="none";
+  document.getElementById("snsButtons").style.display="none";
+
+  let i = 0;
+  const spins = 30;
+  let delay = 70;
+
+  function spin() {
+    const menu = rouletteArray[i % rouletteArray.length];
+    rouletteDiv.textContent = menu.name;
+
+    rouletteDiv.classList.remove('spin');
+    void rouletteDiv.offsetWidth;
+    rouletteDiv.classList.add('spin');
+
+    i++;
+    delay *= 1.05;
+    if(i <= spins){
+      setTimeout(spin, delay);
+    } else {
+      // 최종 결과: 선택된 필터에 맞는 메뉴 중 랜덤
+      let finalArray = menus;
+      if(selectedFilter){
+        finalArray = menus.filter(menu => menu.tags.includes(selectedFilter));
+      }
+      finalMenu = finalArray[Math.floor(Math.random() * finalArray.length)];
+
+      rouletteDiv.textContent = finalMenu.name;
+      rouletteDiv.classList.add('final');
+      showResult(finalMenu);
+    }
+  }
+
+  spin();
+}
+
+
+
+
+
+function showResult(menu){
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = `
+    <p><strong>건강 효과:</strong> ${menu.health}</p>
+    <p><strong>재료:</strong> ${menu.ingredients.join(", ")}</p>
+    <div class="advantages"><strong>장점:</strong> ${menu.advantages}</div>
+    <div class="disadvantages"><strong>단점:</strong> ${menu.disadvantages}</div>
+  `;
+  document.getElementById("shareResultBtn").style.display="inline-block";
+  document.getElementById("snsButtons").style.display="flex";
+
+  const baseUrl = window.location.origin + window.location.pathname + "?menu=" + encodeURIComponent(menu.name);
+  document.getElementById("kakaoBtn").href = `https://sharer.kakao.com/talk/friends/picker/link?url=${encodeURIComponent(baseUrl)}&text=${encodeURIComponent("오늘 점심 추천: "+menu.name)}`;
+  document.getElementById("facebookBtn").href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(baseUrl)}`;
+  document.getElementById("twitterBtn").href = `https://twitter.com/intent/tweet?text=${encodeURIComponent("오늘 점심 추천: "+menu.name)}&url=${encodeURIComponent(baseUrl)}`;
+
+  const url = new URL(window.location);
+  url.searchParams.set('menu', menu.name);
+  window.history.replaceState(null,'',url);
+}
+
+function shareResult(isResult){
+  const baseUrl = window.location.origin + window.location.pathname;
+  let url = baseUrl;
+  let text = "점메추로 오늘 점심 메뉴 추천받기!";
+  if(isResult && finalMenu){
+    url += "?menu=" + encodeURIComponent(finalMenu.name);
+    text = `오늘 점심 추천: ${finalMenu.name}\n장점: ${finalMenu.advantages}\n단점: ${finalMenu.disadvantages}`;
+  }
+
+  if(navigator.share){
+    navigator.share({title:"점메추", text, url}).catch(console.error);
+  } else {
+    window.open(url,"_blank");
+  }
+}
+</script>
+</body>
+</html>
