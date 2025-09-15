@@ -27,11 +27,60 @@ button { padding:12px; font-size:18px; border-radius:10px; border:none; cursor:p
   100% { color:#000; background:transparent; transform: scale(1); }
 }
 .adsense { background-color:#f1f1f1; width:90%; max-width:450px; height:90px; margin:20px 0; display:flex; justify-content:center; align-items:center; color:#888; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.2);}
+.rating { display:flex; gap:5px; margin:10px 0; justify-content:center; }
+.star { font-size:24px; cursor:pointer; color:#ddd; transition:color 0.2s; }
+.star.active { color:#ffd700; }
+.rating-text { text-align:center; margin-top:5px; font-size:14px; color:#666; }
+.favorite-btn { background-color:#ff69b4; color:white; margin-top:10px; }
+.leaderboard { background:#fff; border-radius:15px; padding:20px; width:90%; max-width:450px; margin:20px 0; box-shadow:0 10px 25px rgba(0,0,0,0.2); }
+.leaderboard h3 { text-align:center; margin-bottom:15px; }
+.leaderboard-item { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; }
+.leaderboard-item:last-child { border-bottom:none; }
+.rank { font-weight:bold; color:#ff7f50; }
+.daily-challenge { background:#fff; border-radius:15px; padding:20px; width:90%; max-width:450px; margin:20px 0; box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center; }
+.challenge-btn { background-color:#9c27b0; color:white; }
 </style>
 </head>
 <body>
 
 <div class="adsense">광고 자리 (AdSense 삽입)</div>
+
+<div class="daily-challenge">
+  <h3>🎯 오늘의 챌린지</h3>
+  <p id="challengeText">새로운 메뉴에 도전해보세요!</p>
+  <button class="challenge-btn" onclick="startDailyChallenge()">챌린지 시작</button>
+</div>
+
+<div class="leaderboard">
+  <h3>🏆 인기 메뉴 TOP 5</h3>
+  <div id="leaderboardList">
+    <div class="leaderboard-item">
+      <span class="rank">1위</span>
+      <span>김치찌개 🍲</span>
+      <span>⭐ 4.8</span>
+    </div>
+    <div class="leaderboard-item">
+      <span class="rank">2위</span>
+      <span>비빔밥 🥗</span>
+      <span>⭐ 4.7</span>
+    </div>
+    <div class="leaderboard-item">
+      <span class="rank">3위</span>
+      <span>초밥 🍣</span>
+      <span>⭐ 4.6</span>
+    </div>
+    <div class="leaderboard-item">
+      <span class="rank">4위</span>
+      <span>스테이크 🥩</span>
+      <span>⭐ 4.5</span>
+    </div>
+    <div class="leaderboard-item">
+      <span class="rank">5위</span>
+      <span>파스타 🍝</span>
+      <span>⭐ 4.4</span>
+    </div>
+  </div>
+</div>
 
 <div class="filter-card">
   <h3>카테고리/맛 필터 (한 번에 하나 선택)</h3>
@@ -51,11 +100,23 @@ button { padding:12px; font-size:18px; border-radius:10px; border:none; cursor:p
   <button class="recommend-btn" onclick="startRoulette()">추천!</button>
   <div class="roulette" id="roulette">🍽</div>
   <div class="result" id="result"></div>
+  <div class="rating" id="rating" style="display:none;">
+    <span class="star" onclick="rateMenu(1)">⭐</span>
+    <span class="star" onclick="rateMenu(2)">⭐</span>
+    <span class="star" onclick="rateMenu(3)">⭐</span>
+    <span class="star" onclick="rateMenu(4)">⭐</span>
+    <span class="star" onclick="rateMenu(5)">⭐</span>
+  </div>
+  <div class="rating-text" id="ratingText" style="display:none;"></div>
+  <button class="favorite-btn" id="favoriteBtn" style="display:none;" onclick="toggleFavorite()">❤️ 즐겨찾기</button>
   <button class="share-result-btn" id="shareResultBtn" style="display:none;" onclick="shareResult(true)">결과 공유</button>
   <button class="share-web-btn" onclick="shareResult(false)">웹 공유</button>
+  <button class="share-web-btn" id="findRestaurantBtn" style="display:none; background-color:#ff9800;" onclick="findNearbyRestaurants()">🏪 근처 맛집 찾기</button>
 
   <div class="sns-buttons" id="snsButtons" style="display:none;">
-    
+    <a id="kakaoBtn" href="#" target="_blank" style="background:#FEE500; color:#000; padding:8px 12px; border-radius:8px; text-decoration:none; font-size:14px;">카카오톡</a>
+    <a id="facebookBtn" href="#" target="_blank" style="background:#1877F2; color:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; font-size:14px;">페이스북</a>
+    <a id="twitterBtn" href="#" target="_blank" style="background:#1DA1F2; color:#fff; padding:8px 12px; border-radius:8px; text-decoration:none; font-size:14px;">트위터</a>
   </div>
 </div>
 
@@ -85,6 +146,105 @@ const menus = [
 ];
 
 let finalMenu = null;
+let userRatings = JSON.parse(localStorage.getItem('menuRatings') || '{}');
+let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+let dailyChallenge = JSON.parse(localStorage.getItem('dailyChallenge') || '{}');
+
+// 일일 챌린지 초기화
+function initDailyChallenge() {
+  const today = new Date().toDateString();
+  if (!dailyChallenge.date || dailyChallenge.date !== today) {
+    const challenges = [
+      "한식을 먹어보세요!",
+      "새로운 양식에 도전해보세요!",
+      "건강한 메뉴를 선택해보세요!",
+      "매운 맛에 도전해보세요!",
+      "일식을 맛보세요!"
+    ];
+    dailyChallenge = {
+      date: today,
+      challenge: challenges[Math.floor(Math.random() * challenges.length)],
+      completed: false
+    };
+    localStorage.setItem('dailyChallenge', JSON.stringify(dailyChallenge));
+  }
+  document.getElementById('challengeText').textContent = dailyChallenge.challenge;
+}
+
+// 일일 챌린지 시작
+function startDailyChallenge() {
+  const challengeFilter = dailyChallenge.challenge.includes('한식') ? '한식' :
+                         dailyChallenge.challenge.includes('양식') ? '양식' :
+                         dailyChallenge.challenge.includes('건강') ? '건강식' :
+                         dailyChallenge.challenge.includes('매운') ? '매운맛' :
+                         dailyChallenge.challenge.includes('일식') ? '일식' : null;
+  
+  if (challengeFilter) {
+    document.querySelector(`input[value="${challengeFilter}"]`).checked = true;
+  }
+  startRoulette();
+}
+
+// 메뉴 평점
+function rateMenu(rating) {
+  if (!finalMenu) return;
+  
+  userRatings[finalMenu.name] = rating;
+  localStorage.setItem('menuRatings', JSON.stringify(userRatings));
+  
+  // 별표 표시 업데이트
+  const stars = document.querySelectorAll('.rating .star');
+  stars.forEach((star, index) => {
+    star.classList.toggle('active', index < rating);
+  });
+  
+  document.getElementById('ratingText').textContent = `평점: ${rating}/5 - ${getRatingText(rating)}`;
+  updateLeaderboard();
+}
+
+// 평점 텍스트
+function getRatingText(rating) {
+  const texts = ['별로예요', '그저 그래요', '괜찮아요', '좋아요', '최고예요'];
+  return texts[rating - 1] || '';
+}
+
+// 즐겨찾기 토글
+function toggleFavorite() {
+  if (!finalMenu) return;
+  
+  const index = favorites.indexOf(finalMenu.name);
+  if (index > -1) {
+    favorites.splice(index, 1);
+    document.getElementById('favoriteBtn').textContent = '🤍 즐겨찾기';
+  } else {
+    favorites.push(finalMenu.name);
+    document.getElementById('favoriteBtn').textContent = '❤️ 즐겨찾기됨';
+  }
+  
+  localStorage.setItem('favorites', JSON.stringify(favorites));
+}
+
+// 리더보드 업데이트
+function updateLeaderboard() {
+  const menuStats = {};
+  menus.forEach(menu => {
+    const rating = userRatings[menu.name] || 0;
+    menuStats[menu.name] = rating;
+  });
+  
+  const sortedMenus = Object.entries(menuStats)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5);
+  
+  const leaderboardList = document.getElementById('leaderboardList');
+  leaderboardList.innerHTML = sortedMenus.map(([name, rating], index) => `
+    <div class="leaderboard-item">
+      <span class="rank">${index + 1}위</span>
+      <span>${name}</span>
+      <span>⭐ ${rating || '평가없음'}</span>
+    </div>
+  `).join('');
+}
 function startRoulette() {
   const selectedFilter = document.querySelector('.filter-card input[name="filter"]:checked')?.value;
 
@@ -146,8 +306,31 @@ function showResult(menu){
     <div class="advantages"><strong>장점:</strong> ${menu.advantages}</div>
     <div class="disadvantages"><strong>단점:</strong> ${menu.disadvantages}</div>
   `;
+  
+  // 평점 시스템 표시
+  document.getElementById("rating").style.display="flex";
+  document.getElementById("ratingText").style.display="block";
+  document.getElementById("favoriteBtn").style.display="inline-block";
   document.getElementById("shareResultBtn").style.display="inline-block";
+  document.getElementById("findRestaurantBtn").style.display="inline-block";
   document.getElementById("snsButtons").style.display="flex";
+
+  // 기존 평점 표시
+  const existingRating = userRatings[menu.name] || 0;
+  const stars = document.querySelectorAll('.rating .star');
+  stars.forEach((star, index) => {
+    star.classList.toggle('active', index < existingRating);
+  });
+  
+  if (existingRating > 0) {
+    document.getElementById('ratingText').textContent = `평점: ${existingRating}/5 - ${getRatingText(existingRating)}`;
+  } else {
+    document.getElementById('ratingText').textContent = '평점을 매겨주세요!';
+  }
+
+  // 즐겨찾기 상태 표시
+  const isFavorite = favorites.includes(menu.name);
+  document.getElementById('favoriteBtn').textContent = isFavorite ? '❤️ 즐겨찾기됨' : '🤍 즐겨찾기';
 
   const baseUrl = window.location.origin + window.location.pathname + "?menu=" + encodeURIComponent(menu.name);
   document.getElementById("kakaoBtn").href = `https://sharer.kakao.com/talk/friends/picker/link?url=${encodeURIComponent(baseUrl)}&text=${encodeURIComponent("오늘 점심 추천: "+menu.name)}`;
@@ -174,6 +357,68 @@ function shareResult(isResult){
     window.open(url,"_blank");
   }
 }
+
+// 근처 맛집 찾기
+function findNearbyRestaurants() {
+  if (!finalMenu) return;
+  
+  // 메뉴에 따른 검색 키워드 생성
+  const searchKeywords = {
+    "김치찌개 🍲": "김치찌개 맛집",
+    "비빔밥 🥗": "비빔밥 맛집",
+    "피자 🍕": "피자 맛집",
+    "라면 🍜": "라면 맛집",
+    "샐러드 🥗": "샐러드 맛집",
+    "떡볶이 🌶": "떡볶이 맛집",
+    "초밥 🍣": "초밥 맛집",
+    "파스타 🍝": "파스타 맛집",
+    "스테이크 🥩": "스테이크 맛집",
+    "샌드위치 🥪": "샌드위치 맛집",
+    "우동 🍜": "우동 맛집",
+    "짜장면 🍜": "짜장면 맛집",
+    "탕수육 🥩": "탕수육 맛집",
+    "김밥 🍙": "김밥 맛집",
+    "오므라이스 🍳": "오므라이스 맛집",
+    "카레 🍛": "카레 맛집",
+    "냉면 🥢": "냉면 맛집",
+    "갈비탕 🍲": "갈비탕 맛집",
+    "부대찌개 🍲": "부대찌개 맛집",
+    "떡국 🍲": "떡국 맛집"
+  };
+  
+  const keyword = searchKeywords[finalMenu.name] || finalMenu.name + " 맛집";
+  
+  // 네이버 지도로 검색
+  const naverUrl = `https://map.naver.com/v5/search/${encodeURIComponent(keyword)}`;
+  window.open(naverUrl, '_blank');
+  
+  // 구글 맵으로도 검색 (백업)
+  const googleUrl = `https://www.google.com/maps/search/${encodeURIComponent(keyword)}`;
+  
+  // 사용자에게 선택 옵션 제공
+  if (confirm(`${finalMenu.name} 맛집을 찾아드릴게요!\n\n네이버 지도로 이동하시겠습니까?\n(취소하면 구글 맵으로 이동)`)) {
+    // 네이버 지도는 이미 열림
+  } else {
+    window.open(googleUrl, '_blank');
+  }
+}
+
+// 페이지 로드 시 초기화
+window.addEventListener('load', function() {
+  initDailyChallenge();
+  updateLeaderboard();
+  
+  // URL에서 메뉴 파라미터 확인
+  const urlParams = new URLSearchParams(window.location.search);
+  const menuParam = urlParams.get('menu');
+  if (menuParam) {
+    const menu = menus.find(m => m.name === menuParam);
+    if (menu) {
+      finalMenu = menu;
+      showResult(menu);
+    }
+  }
+});
 </script>
 </body>
 </html>
